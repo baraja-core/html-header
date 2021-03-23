@@ -35,6 +35,12 @@ final class HtmlHeader
 	/** @var string[][]|string[][][] */
 	private array $tags = [];
 
+	private ?string $title = null;
+
+	private ?string $description = null;
+
+	private bool $automaticOpenGraph = true;
+
 
 	public function __toString(): string
 	{
@@ -50,6 +56,9 @@ final class HtmlHeader
 	public function render(?array $groups = null): string
 	{
 		$items = [];
+		if ($this->automaticOpenGraph === true) {
+			$this->computeAutomaticOpenGraph();
+		}
 		foreach (($groups ?? $this->order) as $group) {
 			$items[] = $this->renderGroup($group);
 		}
@@ -91,6 +100,10 @@ final class HtmlHeader
 
 	public function metaDescription(string $content): void
 	{
+		if (($content = trim($content)) === '') {
+			return;
+		}
+		$this->description = $content;
 		$this->meta('description', $content);
 	}
 
@@ -157,6 +170,7 @@ final class HtmlHeader
 			return;
 		}
 		if (($value = trim($value)) !== '') {
+			$this->title = $value;
 			$this->tags['title'][] = '<title>' . htmlspecialchars($value, ENT_NOQUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</title>';
 		}
 	}
@@ -172,6 +186,12 @@ final class HtmlHeader
 				'content' => $value,
 			]));
 		}
+	}
+
+
+	public function setAutomaticOpenGraph(bool $automaticOpenGraph): void
+	{
+		$this->automaticOpenGraph = $automaticOpenGraph;
 	}
 
 
@@ -222,7 +242,7 @@ final class HtmlHeader
 	private function createTag(string $tagName, array $attributes = []): string
 	{
 		$escapeAttr = static function (string $s): string {
-			if (strpos($s, '`') !== false && strpbrk($s, ' <>"\'') === false) {
+			if (str_contains($s, '`') && strpbrk($s, ' <>"\'') === false) {
 				$s .= ' '; // protection against innerHTML mXSS vulnerability nette/nette#1496
 			}
 
@@ -237,5 +257,48 @@ final class HtmlHeader
 		}
 
 		return '<' . $tagName . (count($attrItems) > 0 ? ' ' . implode(' ', $attrItems) : '') . '>';
+	}
+
+
+	private function computeAutomaticOpenGraph(): void
+	{
+		if (isset($this->tags['og']['og:title']) === false && $this->title !== null) {
+			$this->og('title', $this->truncate($this->title, 60));
+		}
+		if (isset($this->tags['og']['og:description']) === false && $this->description !== null) {
+			$this->og('description', $this->truncate($this->description, 65));
+		}
+		if (isset($this->tags['twitter']['twitter:card']) === false) {
+			$this->twitter('card', 'summary');
+		}
+		if (isset($this->tags['twitter']['twitter:description']) === false && $this->title !== null) {
+			$this->twitter('title', $this->truncate($this->title, 55));
+		}
+		if (isset($this->tags['twitter']['twitter:description']) === false && $this->description !== null) {
+			$this->twitter('description', $this->truncate($this->description, 50));
+		}
+	}
+
+
+	/**
+	 * Truncates a UTF-8 string to given maximal length, while trying not to split whole words.
+	 * Only if the string is truncated, an ellipsis (or something else set with third argument)
+	 * is appended to the string.
+	 */
+	private function truncate(string $s, int $maxLen, string $append = "\u{2026}"): string
+	{
+		if (mb_strlen($s, 'UTF-8') > $maxLen) {
+			$maxLen -= mb_strlen($append, 'UTF-8');
+			if ($maxLen < 1) {
+				return $append;
+			}
+			if (preg_match('#^.{1,' . $maxLen . '}(?=[\s\x00-/:-@\[-`{-~])#us', $s, $matches)) {
+				return $matches[0] . $append;
+			}
+
+			return mb_substr($s, 0, $maxLen, 'UTF-8') . $append;
+		}
+
+		return $s;
 	}
 }
