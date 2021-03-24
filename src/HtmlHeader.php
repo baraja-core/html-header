@@ -100,7 +100,7 @@ final class HtmlHeader
 
 	public function metaDescription(string $content): void
 	{
-		if (($content = trim($content)) === '') {
+		if (($content = $this->normalize($content)) === '') {
 			return;
 		}
 		$this->description = $content;
@@ -169,7 +169,7 @@ final class HtmlHeader
 		if ($value === null) {
 			return;
 		}
-		if (($value = trim($value)) !== '') {
+		if (($value = $this->normalize($value)) !== '') {
 			$this->title = $value;
 			$this->tags['title'][] = '<title>' . htmlspecialchars($value, ENT_NOQUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</title>';
 		}
@@ -300,5 +300,15 @@ final class HtmlHeader
 		}
 
 		return $s;
+	}
+
+
+	private function normalize(string $haystack): string
+	{
+		$haystack = strip_tags($haystack);
+		$haystack = (string) preg_replace('/[*\-=]{2,}/', ' ', $haystack);
+		$haystack = (string) preg_replace('/\s+/', ' ', $haystack);
+
+		return trim($haystack);
 	}
 }
