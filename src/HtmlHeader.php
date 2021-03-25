@@ -116,7 +116,7 @@ final class HtmlHeader
 	public function meta(string $key, $value): void
 	{
 		if (!empty($value)) {
-			if ($key === 'description') {
+			if ($key === 'description' && is_string($value)) {
 				$value = $this->truncate($value, 153);
 			}
 			$attributes = ['name' => $key];
