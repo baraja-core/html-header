@@ -81,7 +81,7 @@ final class HtmlHeader
 	 *
 	 * @param string|string[]|null $value
 	 */
-	public function link(string $key, $value): void
+	public function link(string $key, string|array|null $value): void
 	{
 		if (!empty($value)) {
 			$attributes = ['rel' => $key];
@@ -113,7 +113,7 @@ final class HtmlHeader
 	 *
 	 * @param string|string[]|null $value
 	 */
-	public function meta(string $key, $value): void
+	public function meta(string $key, string|array|null $value): void
 	{
 		if (!empty($value)) {
 			if ($key === 'description' && is_string($value)) {
