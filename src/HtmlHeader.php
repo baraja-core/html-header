@@ -27,7 +27,7 @@ namespace Baraja\HtmlHeader;
  *     'name' => 'Jan Barášek',
  * ]);
  */
-final class HtmlHeader
+final class HtmlHeader implements \Stringable
 {
 	/** @var string[] */
 	private array $order = ['title', 'meta', 'og', 'twitter', 'link', 'json-ld'];
