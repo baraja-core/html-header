@@ -1,0 +1,2 @@
+extensions:
+	htmlHeader: Baraja\HtmlHeader\HtmlHeaderExtension
