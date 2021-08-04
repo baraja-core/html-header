@@ -29,10 +29,10 @@ namespace Baraja\HtmlHeader;
  */
 final class HtmlHeader implements \Stringable
 {
-	/** @var string[] */
+	/** @var array<int, string> */
 	private array $order = ['title', 'meta', 'og', 'twitter', 'link', 'json-ld'];
 
-	/** @var string[][]|string[][][] */
+	/** @var array<string, array<int|string, array<int, string>|string>> */
 	private array $tags = [];
 
 	private ?string $title = null;
@@ -51,7 +51,7 @@ final class HtmlHeader implements \Stringable
 	/**
 	 * Render all or a specific group of HTML meta tags.
 	 *
-	 * @param string[] $groups render specific groups or keep empty for all records.
+	 * @param array<int, string> $groups render specific groups or keep empty for all records.
 	 */
 	public function render(?array $groups = null): string
 	{
@@ -68,7 +68,7 @@ final class HtmlHeader implements \Stringable
 
 
 	/**
-	 * @param string[] $order
+	 * @param array<int, string> $order
 	 */
 	public function setCustomOrderingStrategy(array $order): void
 	{
@@ -79,28 +79,29 @@ final class HtmlHeader implements \Stringable
 	/**
 	 * Build an HTML link tag.
 	 *
-	 * @param string|string[]|null $value
+	 * @param array<string, string>|string|null $value
 	 */
 	public function link(string $key, string|array|null $value): void
 	{
-		if (!empty($value)) {
-			$attributes = ['rel' => $key];
-			if (is_array($value)) {
-				foreach ($value as $valueKey => $v) {
-					$attributes[$valueKey] = $v;
-				}
-			} else {
-				$attributes['href'] = $value;
-			}
-
-			$this->addToTagsGroup('link', $key, $this->createTag('link', $attributes));
+		if ($value === [] || $value === '') {
+			return;
 		}
+		$attributes = ['rel' => $key];
+		if (is_array($value)) {
+			foreach ($value as $valueKey => $v) {
+				$attributes[$valueKey] = $v;
+			}
+		} else {
+			$attributes['href'] = $value;
+		}
+		$this->addToTagsGroup('link', $key, $this->createTag('link', $attributes));
 	}
 
 
 	public function metaDescription(string $content): void
 	{
-		if (($content = $this->normalize($content)) === '') {
+		$content = $this->normalize($content);
+		if ($content === '') {
 			return;
 		}
 		$this->description = $content;
@@ -111,32 +112,32 @@ final class HtmlHeader implements \Stringable
 	/**
 	 * Build an HTML meta tag.
 	 *
-	 * @param string|string[]|null $value
+	 * @param string|array<string, string>|null $value
 	 */
 	public function meta(string $key, string|array|null $value): void
 	{
-		if (!empty($value)) {
-			if ($key === 'description' && is_string($value)) {
-				$value = $this->truncate($value, 153);
-			}
-			$attributes = ['name' => $key];
-			if (is_array($value)) {
-				foreach ($value as $valueKey => $v) {
-					$attributes[$valueKey] = $v;
-				}
-			} else {
-				$attributes['content'] = $value;
-			}
-
-			$this->addToTagsGroup('meta', $key, $this->createTag('meta', $attributes));
+		if ($value === [] || $value === '') {
+			return;
 		}
+		if ($key === 'description' && is_string($value)) {
+			$value = $this->truncate($value, 153);
+		}
+		$attributes = ['name' => $key];
+		if (is_array($value)) {
+			foreach ($value as $valueKey => $v) {
+				$attributes[$valueKey] = $v;
+			}
+		} else {
+			$attributes['content'] = $value;
+		}
+		$this->addToTagsGroup('meta', $key, $this->createTag('meta', $attributes));
 	}
 
 
 	/** Build an Open Graph meta tag. */
 	public function og(string $key, string $value, bool $prefixed = true): void
 	{
-		if (!empty($value)) {
+		if ($value !== '') {
 			$key = $prefixed ? 'og:' . $key : $key;
 			$this->addToTagsGroup('og', $key, $this->createTag('meta', [
 				'property' => $key,
@@ -149,7 +150,7 @@ final class HtmlHeader implements \Stringable
 	/**
 	 * Build an JSON linked data meta tag.
 	 *
-	 * @param mixed[] $schema
+	 * @param array<string, mixed> $schema
 	 */
 	public function jsonld(array $schema): void
 	{
@@ -182,7 +183,7 @@ final class HtmlHeader implements \Stringable
 	/** Build a Twitter Card meta tag. */
 	public function twitter(string $key, string $value, bool $prefixed = true): void
 	{
-		if (!empty($value)) {
+		if ($value !== '') {
 			$key = $prefixed ? 'twitter:' . $key : $key;
 			$this->addToTagsGroup('twitter', $key, $this->createTag('meta', [
 				'name' => $key,
@@ -201,7 +202,7 @@ final class HtmlHeader implements \Stringable
 	/** Render all HTML meta tags from a specific group. */
 	private function renderGroup(string $group): string
 	{
-		if (!isset($this->tags[$group])) {
+		if (isset($this->tags[$group]) === false) {
 			return '';
 		}
 
@@ -240,7 +241,7 @@ final class HtmlHeader implements \Stringable
 	/**
 	 * Build an HTML tag
 	 *
-	 * @param string[] $attributes
+	 * @param array<string, string|null> $attributes
 	 */
 	private function createTag(string $tagName, array $attributes = []): string
 	{
@@ -254,9 +255,10 @@ final class HtmlHeader implements \Stringable
 
 		$attrItems = [];
 		foreach ($attributes as $key => $value) {
-			if ($value !== null) {
-				$attrItems[] = $escapeAttr((string) $key) . '="' . $escapeAttr($value) . '"';
+			if ($value === null) {
+				continue;
 			}
+			$attrItems[] = $escapeAttr($key) . '="' . $escapeAttr($value) . '"';
 		}
 
 		return '<' . $tagName . (count($attrItems) > 0 ? ' ' . implode(' ', $attrItems) : '') . '>';
@@ -295,7 +297,7 @@ final class HtmlHeader implements \Stringable
 			if ($maxLen < 1) {
 				return $append;
 			}
-			if (preg_match('#^.{1,' . $maxLen . '}(?=[\s\x00-/:-@\[-`{-~])#us', $s, $matches)) {
+			if (preg_match('#^.{1,' . $maxLen . '}(?=[\s\x00-/:-@\[-`{-~])#us', $s, $matches) === 1) {
 				return $matches[0] . $append;
 			}
 
